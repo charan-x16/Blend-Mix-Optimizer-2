@@ -62,7 +62,7 @@ def calculate_blend(
     p     = weighted_avg("%P")
     mno   = weighted_avg("%MnO")
 
-    slag_pct = sio2 + al2o3 + cao + mgo
+    slag_pct = sio2 + al2o3 + cao + mgo + mno
     slag_mt  = slag_pct / 100.0 * total_qty
 
     total_cost   = sum(quantities[ore] * prices.get(ore, 0) for ore in quantities)

@@ -1,11 +1,16 @@
 """
 UI Sidebar — Ore selection, quantity inputs, price inputs, goal selection.
 Returns all operator inputs as structured dicts.
+
+Changes from v1:
+  - Added "Balanced Optimization" as 4th goal option
+  - Removed Vendor Priority (Step 6) — not intuitive for operators
+  - Steps renumbered: 1 Select, 2 Target, 3 Quantities, 4 Prices, 5 Goal, 6 Step Size
 """
 
 import streamlit as st
 import pandas as pd
-from data.ore_chemistry import get_ore_flag, SLAG_COMPONENTS
+from data.ore_chemistry import get_ore_flag
 
 
 def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
@@ -15,7 +20,7 @@ def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
     """
     st.sidebar.markdown("""
     <div style='padding: 0.5rem 0 1rem 0;'>
-        <h2 style='font-family: monospace; font-size: 1.1rem; 
+        <h2 style='font-family: monospace; font-size: 1.1rem;
                    color: #E8A020; margin: 0; letter-spacing: 2px;'>
             ⚙️ BLEND CONFIGURATION
         </h2>
@@ -47,9 +52,9 @@ def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
         "Total Target Blend (MT)",
         min_value=10.0,
         max_value=50000.0,
-        value=1000.0,
+        value=3800.0,
         step=50.0,
-        help="Total tonnes of ore blend required"
+        help="Total tonnes of ore blend required",
     )
 
     st.sidebar.divider()
@@ -59,20 +64,19 @@ def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
     st.sidebar.caption("Enter max available tonnes per ore")
 
     max_quantities = {}
-    total_available = 0
+    total_available = 0.0
     for ore in selected_ores:
         qty = st.sidebar.number_input(
-            f"{ore}",
+            ore,
             min_value=1.0,
             max_value=99999.0,
-            value=float(max(100, int(target_qty / len(selected_ores)))),
+            value=float(1*target_qty),
             step=10.0,
             key=f"qty_{ore}",
         )
         max_quantities[ore] = qty
         total_available += qty
 
-    # Availability check
     if total_available < target_qty:
         st.sidebar.error(
             f"⚠️ Total available ({total_available:.0f} MT) < "
@@ -86,13 +90,30 @@ def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
     st.sidebar.markdown("### Step 4 — Price per MT (₹)")
     st.sidebar.caption("Enter current purchase price per tonne")
 
+    ore_price_dict = {
+        "NMDC ROM":               8739.0,
+        "NMDC Donimalai":         5684.0,
+        "Bacheli Fines O/S":      10000.0,
+        "Lloyds Pellet (Sarda)":  9650.0,
+        "Lloyds Fines O/S":       6162.0,
+        "Lloyds CLO":             8051.0,
+        "JRS Ventures CLO":       6831.0,
+        "Jayaswal Neco":          6650.0,
+        "Gomti CLO":              5349.0,
+        "Titani Ferrous CLO":     4939.0,
+        "Geomin CLO":             3827.0,
+        "Acore MN Ore":           8473.0,
+        "NMDC Kirandul CLO":      10000.0,
+        "Sinter (SP-02)":         5282.0,
+    }
+    
     prices = {}
     for ore in selected_ores:
         price = st.sidebar.number_input(
-            f"{ore}",
+            ore,
             min_value=0.0,
             max_value=99999.0,
-            value=5000.0,
+            value=ore_price_dict[ore],
             step=100.0,
             key=f"price_{ore}",
         )
@@ -102,43 +123,41 @@ def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
 
     # ── Step 5: Optimization Goal ─────────────────────────────────────────────
     st.sidebar.markdown("### Step 5 — Optimization Goal")
+
     goal = st.sidebar.radio(
         "What matters most today?",
-        options=["Minimize Cost", "Maximize Fe%", "Minimize Slag%"],
+        options=[
+            "Minimize Cost",
+            "Maximize Fe%",
+            "Minimize Slag%",
+            "Balanced Optimization",
+        ],
         index=0,
-        help="The optimizer will find the blend that best achieves this goal"
+        help=(
+            "Minimize Cost: cheapest blend that hits target.\n"
+            "Maximize Fe%: highest iron grade blend.\n"
+            "Minimize Slag%: lowest slag burden blend.\n"
+            "Balanced: finds blends that perform well across all three goals simultaneously."
+        ),
     )
 
-    st.sidebar.divider()
-
-    # ── Step 6: Vendor Priority (for overflow resolver) ───────────────────────
-    st.sidebar.markdown("### Step 6 — Vendor Priority")
-    st.sidebar.caption("Priority order for overflow redistribution (1 = highest)")
-
-    priority_list = []
-    for i, ore in enumerate(selected_ores):
-        priority = st.sidebar.number_input(
-            f"{ore}",
-            min_value=1,
-            max_value=len(selected_ores),
-            value=i + 1,
-            step=1,
-            key=f"priority_{ore}",
+    # Explain balanced mode inline
+    if goal == "Balanced Optimization":
+        st.sidebar.info(
+            "⚖️ Balanced mode runs all three optimizations, "
+            "identifies blends that appear in all result sets, "
+            "and ranks them by a combined cost + Fe + slag score."
         )
-        priority_list.append((priority, ore))
-
-    priority_list.sort(key=lambda x: x[0])
-    ordered_priority = [ore for _, ore in priority_list]
 
     st.sidebar.divider()
 
-    # ── Step 7: Grid Search Settings ─────────────────────────────────────────
-    st.sidebar.markdown("### Step 7 — Grid Search Settings")
+    # ── Step 6: Grid Search Step Size ────────────────────────────────────────
+    st.sidebar.markdown("### Step 6 — Grid Search Settings")
     step_size = st.sidebar.select_slider(
         "Step Size (MT)",
-        options=[25, 50, 100, 200, 500],
-        value=100,
-        help="Smaller steps = more combinations = slower"
+        options=[5, 10, 25, 50, 100],
+        value=10,
+        help="Smaller steps = more candidate blends = slightly slower",
     )
 
     st.sidebar.divider()
@@ -147,18 +166,17 @@ def render_sidebar(chemistry_df: pd.DataFrame) -> dict | None:
     run = st.sidebar.button(
         "🚀 RUN OPTIMIZER",
         type="primary",
-        use_container_width=True,
+        width='stretch',
     )
 
     if not run:
         return None
 
     return {
-        "selected_ores":   selected_ores,
-        "max_quantities":  max_quantities,
-        "prices":          prices,
-        "target_qty":      target_qty,
-        "goal":            goal,
-        "priority_list":   ordered_priority,
-        "step_size":       float(step_size),
+        "selected_ores":  selected_ores,
+        "max_quantities": max_quantities,
+        "prices":         prices,
+        "target_qty":     target_qty,
+        "goal":           goal,
+        "step_size":      float(step_size),
     }
