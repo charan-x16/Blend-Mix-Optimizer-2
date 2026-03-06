@@ -5,20 +5,39 @@ UI Results — Best blend card, balanced results display, and top blends table.
 import streamlit as st
 import pandas as pd
 from engine.blend_calculator import BlendResult
+from engine.fuel_calculator import FuelInput, FuelSlagResult, calculate_fuel_slag
 
 
 # ── Optimal blend card ───────────────────────────────────────────────────────
 
-def render_best_blend_card(result: BlendResult):
+def render_best_blend_card(result: BlendResult, fuel_input: FuelInput = None):
     """Render the minimum cost optimal blend card."""
     st.subheader("💰 Minimum Cost Blend")
 
+    # Fuel slag
+    fuel_result = calculate_fuel_slag(fuel_input) if fuel_input else None
+    total_slag  = result.slag_mt + (fuel_result.total_fuel_slag_mt if fuel_result else 0)
+
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Fe%",        f"{result.effective_fe_pct:.2f}%")
-    col2.metric("Slag%",      f"{result.slag_pct:.2f}%")
-    col3.metric("Slag MT",    f"{result.slag_mt:.1f}")
-    col4.metric("Cost/MT",    f"₹{result.cost_per_mt:,.0f}")
-    col5.metric("Total Cost", f"₹{result.total_cost/100000:.2f}L")
+    col1.metric("Fe%",            f"{result.effective_fe_pct:.2f}%")
+    col2.metric("Ore Slag MT",    f"{result.slag_mt:.1f}")
+    col3.metric("Total BF Slag",  f"{total_slag:.1f} MT",
+                delta=f"+{fuel_result.total_fuel_slag_mt:.1f} from fuel" if fuel_result else None,
+                delta_color="inverse")
+    col4.metric("Cost/MT",        f"₹{result.cost_per_mt:,.0f}")
+    col5.metric("Total Cost",     f"₹{result.total_cost/100000:.2f}L")
+
+    # Fuel slag breakdown
+    if fuel_result:
+        with st.expander("🔥 Fuel Slag Breakdown", expanded=False):
+            fc1, fc2, fc3, fc4 = st.columns(4)
+            fc1.metric("Coke Slag",     f"{fuel_result.coke_slag_mt:.1f} MT",
+                       f"Ash: {fuel_input.coke_ash_pct}% × {fuel_input.coke_qty_mt:.0f} MT")
+            fc2.metric("Nut Coke Slag", f"{fuel_result.nut_coke_slag_mt:.1f} MT",
+                       f"Ash: {fuel_input.nut_coke_ash_pct}% × {fuel_input.nut_coke_qty_mt:.0f} MT")
+            fc3.metric("PCI Slag",      f"{fuel_result.pci_slag_mt:.1f} MT",
+                       f"Ash: {fuel_input.pci_ash_pct}% × {fuel_input.pci_qty_mt:.0f} MT")
+            fc4.metric("Total Fuel Slag", f"{fuel_result.total_fuel_slag_mt:.1f} MT")
 
     with st.expander("Full chemistry + composition"):
         qty_cols = st.columns(len(result.quantities))

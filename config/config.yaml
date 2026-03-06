@@ -57,7 +57,7 @@ ore_min_pct:
   Titani Ferrous CLO:     0.0
   Geomin CLO:             0.0
   Acore Industries:       0.0
-  Sinter (SP-02):         0.0
+  # Sinter (SP-02):         0.0
 
 # ── P25 reference values (commented out — uncomment to activate) ──
 # ore_min_pct:
@@ -74,3 +74,51 @@ ore_min_pct:
 #   Geomin CLO:             9.02
 #   Acore Industries:       0.77
 #   Sinter (SP-02):        65.01
+
+# ── Coke / Nut Coke / PCI Ash Analysis (% of ash) ─────────────────
+# Source: BF-02 lab analysis (fuel.xlsx)
+# Slag from each = qty_MT × (ash%/100) × (SiO2+Al2O3+CaO+MgO)_ash/100
+# Update these when lab reports new averages
+
+coke_ash_analysis:
+  SiO2:    56.51
+  Al2O3:   27.64
+  CaO:      2.65
+  MgO:      1.09
+  Fe2O3:    6.34
+  S:        0.74
+  P:        0.041
+  TiO2:     1.46
+
+nut_coke_ash_analysis:
+  SiO2:    55.76
+  Al2O3:   26.96
+  CaO:      3.42
+  MgO:      1.29
+  Fe2O3:    6.86
+  S:        0.77
+  P:        0.039
+  TiO2:     1.491
+
+pci_ash_analysis:
+  SiO2:    51.72
+  Al2O3:   24.55
+  CaO:      5.79
+  MgO:      1.93
+  Fe2O3:    6.62
+  S:        0.41
+  P:        0.054
+  TiO2:     0.973
+
+# ── Default quantities and ash% for sidebar ───────────────────────
+coke_defaults:
+  qty_mt:   800.0
+  ash_pct:  13.0
+
+nut_coke_defaults:
+  qty_mt:   120.0
+  ash_pct:  13.5
+
+pci_defaults:
+  qty_mt:   160.0
+  ash_pct:  10.0

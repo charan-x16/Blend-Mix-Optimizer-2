@@ -89,6 +89,7 @@ def main():
     prices         = operator_inputs["prices"]
     target_qty     = operator_inputs["target_qty"]
     step_size      = operator_inputs["step_size"]
+    fuel_input     = operator_inputs.get("fuel_input", None)
 
     with st.spinner("Running cost optimizer..."):
         optimal_result = run_optimizer(
@@ -119,7 +120,7 @@ def main():
         )
 
     with tab2:
-        render_best_blend_card(optimal_result)
+        render_best_blend_card(optimal_result, fuel_input)
         st.divider()
         render_top_blends_table(grid_df)
 
